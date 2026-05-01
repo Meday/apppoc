@@ -40,7 +40,7 @@ restart: check-docker ## Redémarre les containers
 
 build: check-docker ## Rebuild l'image Docker
 	@echo "$(GREEN)Build de l'image...$(NC)"
-	$(COMPOSE) build --no-cache
+	$(COMPOSE) build
 
 bash: check-running ## Ouvre un shell bash dans le container
 	@echo "$(GREEN)Connexion au container $(SERVICE)...$(NC)"
@@ -59,7 +59,7 @@ install: check-running ## Installe les dépendances (pnpm install)
 
 dev: check-running ## Lance le mode développement (Tauri + Svelte + FrankenPHP)
 	@echo "$(GREEN)Lancement du mode dev...$(NC)"
-	$(COMPOSE) exec $(SERVICE) pnpm dev
+	$(COMPOSE) exec $(SERVICE) sh -c 'frankenphp php-server --listen 127.0.0.1:8080 --root /app/backend/public & pnpm tauri dev'
 
 clean: check-docker ## Nettoie les containers, volumes et images
 	@echo "$(RED)Nettoyage complet...$(NC)"

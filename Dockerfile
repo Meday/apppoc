@@ -31,12 +31,9 @@ ENV PATH="/root/.cargo/bin:$PATH"
 RUN cargo install tauri-cli --version "^${TAURI_CLI_VERSION}"
 
 # Node.js + pnpm
-RUN curl -o- https://fnm.vercel.app/install | bash \
-    && . /root/.bashrc \
-    && fnm install ${NODE_VERSION} \
-    && fnm default ${NODE_VERSION} \
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y nodejs \
     && corepack enable pnpm
-ENV PATH="/root/.local/share/fnm/node-versions/node/v${NODE_VERSION}/installation/bin:$PATH"
 
 # Composer + Symfony CLI
 RUN curl -sS https://getcomposer.org/installer | php \
