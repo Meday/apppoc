@@ -14,14 +14,16 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            frankenphp_url: https://github.com/dunglas/frankenphp/releases/latest/download/frankenphp-windows-x86_64.exe
+            frankenphp_url: https://github.com/php/frankenphp/releases/latest/download/frankenphp-windows-x86_64.zip
             frankenphp_bin: frankenphp-x86_64-pc-windows-msvc.exe
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            frankenphp_url: https://github.com/dunglas/frankenphp/releases/latest/download/frankenphp-linux-x86_64
+            frankenphp_url: https://github.com/php/frankenphp/releases/latest/download/frankenphp-linux-x86_64
             frankenphp_bin: frankenphp-x86_64-unknown-linux-gnu
 
     runs-on: ${{ matrix.platform }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -56,10 +58,19 @@ jobs:
       - name: Install backend dependencies
         run: composer install --no-dev --no-scripts --optimize-autoloader --working-dir=backend
 
-      - name: Download FrankenPHP sidecar
+      - name: Download FrankenPHP sidecar (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
-          curl -L -o src-tauri/binaries/${{ matrix.frankenphp_bin }} ${{ matrix.frankenphp_url }}
-          chmod +x src-tauri/binaries/${{ matrix.frankenphp_bin }} || true
+          curl -fL -o src-tauri/binaries/${{ matrix.frankenphp_bin }} ${{ matrix.frankenphp_url }}
+          chmod +x src-tauri/binaries/${{ matrix.frankenphp_bin }}
+
+      - name: Download FrankenPHP sidecar (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          curl -fL -o frankenphp.zip ${{ matrix.frankenphp_url }}
+          Expand-Archive -Path frankenphp.zip -DestinationPath frankenphp-extracted
+          Move-Item frankenphp-extracted/frankenphp.exe src-tauri/binaries/${{ matrix.frankenphp_bin }}
 
       - name: Build Tauri app
         run: pnpm tauri build
