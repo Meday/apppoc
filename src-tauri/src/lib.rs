@@ -27,12 +27,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .manage(SidecarState::default())
-        .setup(|_app| {
+        .setup(|#[allow(unused)] app| {
             // In dev mode (debug_assertions), FrankenPHP is managed externally by the Makefile.
             // Only spawn the sidecar in release builds where the backend is bundled.
             #[cfg(not(debug_assertions))]
             {
-                let backend_root = resolve_backend_root(_app);
+                let backend_root = resolve_backend_root(app);
                 let sidecar_command = app.shell().sidecar("frankenphp");
                 match sidecar_command {
                     Ok(cmd) => {
