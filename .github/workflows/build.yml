@@ -71,6 +71,8 @@ jobs:
           curl -fL -o frankenphp.zip ${{ matrix.frankenphp_url }}
           Expand-Archive -Path frankenphp.zip -DestinationPath frankenphp-extracted
           Move-Item frankenphp-extracted/frankenphp.exe src-tauri/binaries/${{ matrix.frankenphp_bin }}
+          # Bundle all DLLs from the ZIP so Windows can find them at runtime
+          Get-ChildItem frankenphp-extracted/*.dll -ErrorAction SilentlyContinue | Copy-Item -Destination src-tauri/binaries/
 
       - name: Build Tauri app
         run: pnpm tauri build

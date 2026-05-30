@@ -58,6 +58,11 @@ install: check-running ## Installe les dépendances (pnpm install)
 	$(COMPOSE) exec $(SERVICE) pnpm install
 
 dev: check-running ## Lance le mode développement (Tauri + Svelte + FrankenPHP)
+	@if ! $(COMPOSE) exec $(SERVICE) test -f /app/backend/var/data_dev.db 2>/dev/null; then \
+		echo "$(YELLOW)Base de données introuvable. Création automatique...$(NC)"; \
+		$(COMPOSE) exec $(SERVICE) php backend/bin/console doctrine:schema:create; \
+		echo "$(GREEN)Base de données créée.$(NC)"; \
+	fi
 	@echo "$(GREEN)Lancement du mode dev...$(NC)"
 	$(COMPOSE) exec $(SERVICE) sh -c 'frankenphp php-server --listen 127.0.0.1:8080 --root /app/backend/public & pnpm tauri dev'
 
@@ -70,6 +75,14 @@ prune: check-docker ## Nettoie les ressources Docker inutilisées (prudence!)
 	@echo "$(YELLOW)Nettoyage des ressources Docker inutilisées...$(NC)"
 	docker system prune -af --volumes
 
-database-init: check-running ## Crée la base de données (Doctrine)
-	@echo "$(GREEN)Création de la base de données...$(NC)"
-	$(COMPOSE) exec -it $(SERVICE) php backend/bin/console doctrine:schema:create
+database-init: check-running ## Réinitialise la base de données (Doctrine) [Y/n]
+	@read -p "Réinitialiser la base de données ? Toutes les données seront perdues. [Y/n] " confirm; \
+	confirm=$${confirm:-Y}; \
+	if [ "$$confirm" = "Y" ] || [ "$$confirm" = "y" ]; then \
+		echo "$(GREEN)Réinitialisation de la base de données...$(NC)"; \
+		$(COMPOSE) exec $(SERVICE) php backend/bin/console doctrine:schema:drop --force --full-database; \
+		$(COMPOSE) exec $(SERVICE) php backend/bin/console doctrine:schema:create; \
+		echo "$(GREEN)Base de données réinitialisée.$(NC)"; \
+	else \
+		echo "$(YELLOW)Annulé.$(NC)"; \
+	fi

@@ -2,11 +2,13 @@ use std::sync::Mutex;
 
 use tauri::{Manager, RunEvent};
 use tauri_plugin_shell::process::CommandChild;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::ShellExt;
 
 #[derive(Default)]
 struct SidecarState(Mutex<Option<CommandChild>>);
 
+#[cfg(not(debug_assertions))]
 fn resolve_backend_root(app: &tauri::App) -> String {
     // In production, the backend is bundled in the resource directory
     if let Ok(resource_dir) = app.path().resource_dir() {
@@ -25,32 +27,37 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .manage(SidecarState::default())
-        .setup(|app| {
-            let backend_root = resolve_backend_root(app);
-            let sidecar_command = app.shell().sidecar("frankenphp");
-            match sidecar_command {
-                Ok(cmd) => {
-                    match cmd
-                        .args([
-                            "php-server",
-                            "--listen",
-                            "127.0.0.1:8080",
-                            "--root",
-                            &backend_root,
-                        ])
-                        .spawn()
-                    {
-                        Ok(sidecar) => {
-                            let state = app.state::<SidecarState>();
-                            *state.0.lock().unwrap() = Some(sidecar.1);
-                        }
-                        Err(e) => {
-                            eprintln!("Sidecar spawn failed (dev mode?): {e}");
+        .setup(|_app| {
+            // In dev mode (debug_assertions), FrankenPHP is managed externally by the Makefile.
+            // Only spawn the sidecar in release builds where the backend is bundled.
+            #[cfg(not(debug_assertions))]
+            {
+                let backend_root = resolve_backend_root(_app);
+                let sidecar_command = app.shell().sidecar("frankenphp");
+                match sidecar_command {
+                    Ok(cmd) => {
+                        match cmd
+                            .args([
+                                "php-server",
+                                "--listen",
+                                "127.0.0.1:8080",
+                                "--root",
+                                &backend_root,
+                            ])
+                            .spawn()
+                        {
+                            Ok(sidecar) => {
+                                let state = app.state::<SidecarState>();
+                                *state.0.lock().unwrap() = Some(sidecar.1);
+                            }
+                            Err(e) => {
+                                eprintln!("Sidecar spawn failed: {e}");
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    eprintln!("Sidecar not found (dev mode?): {e}");
+                    Err(e) => {
+                        eprintln!("Sidecar not found: {e}");
+                    }
                 }
             }
 
